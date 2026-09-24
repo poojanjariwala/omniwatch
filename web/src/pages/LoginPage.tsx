@@ -28,11 +28,10 @@ export default function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      localStorage.setItem("ow_demo_mode", "1");
       const user = await login(p.email, p.password);
       routeUser(user.role);
     } catch (err) {
-      setError(`Quick login failed (${p.label}). Start the backend with demo data: ${apiErrorText(err)}`);
+      setError(`Quick login failed (${p.label}): ${apiErrorText(err)}`);
     } finally {
       setBusy(false);
     }

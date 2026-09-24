@@ -52,7 +52,21 @@ export function setActionToken(token: string): void {
   actionToken = token;
 }
 
-import { apiBase } from "./config";
+import { apiBase, isDemoMode } from "./config";
+import { demoRequest } from "./demoServer";
+
+/** POST evidence file (multipart). Handles demo mode + auth header centrally
+ *  so both the workspace capture and the offline sync queue share one path. */
+export async function uploadEvidence(inspectionId: number, form: FormData): Promise<Response> {
+  if (isDemoMode()) {
+    return demoRequest(`/api/inspections/${inspectionId}/evidence`, { method: "POST", form });
+  }
+  return fetch(apiBase() + `/api/inspections/${inspectionId}/evidence`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sessionStorage.getItem("ow_access_token") ?? ""}` },
+    body: form,
+  });
+}
 
 export async function login(email: string, password: string): Promise<UserInfo> {
   const body = await request("/api/auth/login", {
@@ -94,6 +108,12 @@ interface ReqOpts {
 }
 
 async function raw(path: string, opts: ReqOpts, retry: boolean): Promise<Response> {
+  if (isDemoMode()) {
+    return demoRequest(path, {
+      method: opts.method, json: opts.json, form: opts.form,
+      headers: new Headers(),
+    });
+  }
   const headers = new Headers();
   const token = getAccessToken();
   if (!opts.skipAuth && token) headers.set("Authorization", `Bearer ${token}`);

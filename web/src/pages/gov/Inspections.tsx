@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chip, Err, Kv, Modal, Panel, Btn, Field, Empty, TrustRow } from "../../components/ui";
+import { requestBlob } from "../../lib/api";
 import { apiErrorText, request } from "../../lib/api";
 import { useGet } from "../../lib/hooks";
 import { fmtTime, shortHash, statusTone, titleCase } from "../../lib/format";
@@ -135,12 +136,7 @@ export default function GovInspections() {
                 {(sel.evidence ?? []).length === 0 && <Empty text="No evidence uploaded" />}
                 <div className="row">
                   {(sel.evidence ?? []).map((e) => (
-                    <div key={e.id} className="thumb">
-                      <img src={`/api/evidence/${e.id}/file`} alt="evidence" loading="lazy" />
-                      <div className="caption" style={{ padding: "2px 4px" }}>
-                        geo {e.geofence_ok ? "ok" : "out"} · <span className="mono">{shortHash(e.sha256, 8)}</span>
-                      </div>
-                    </div>
+                    <EvidenceThumb key={e.id} evidence={e} />
                   ))}
                 </div>
               </Panel>
@@ -148,6 +144,25 @@ export default function GovInspections() {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function EvidenceThumb({ evidence }: { evidence: any }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    let dead = false;
+    requestBlob(`/api/evidence/${evidence.id}/file`)
+      .then((b) => { if (!dead) setUrl(URL.createObjectURL(b)); })
+      .catch(() => undefined);
+    return () => { dead = true; };
+  }, [evidence.id]);
+  return (
+    <div className="thumb">
+      {url ? <img src={url} alt="evidence" width={84} height={63} loading="lazy" /> : <div style={{ height: 63, background: "var(--muted-2)" }} />}
+      <div className="caption" style={{ padding: "2px 4px" }}>
+        geo {evidence.geofence_ok ? "ok" : "out"} · <span className="mono">{shortHash(evidence.sha256, 8)}</span>
+      </div>
     </div>
   );
 }

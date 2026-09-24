@@ -4,4 +4,7 @@
 // (CORS_ORIGINS env var on the API server), or requests will be blocked.
 window.OW_CONFIG = {
   API_BASE: "", // empty = same origin (default for Docker/nginx and vite dev proxy)
+  // "auto" = demo backend on static hosts (e.g. GitHub Pages), real API on localhost.
+  // true forces demo everywhere; false disables the demo backend entirely.
+  DEMO_MODE: "auto",
 };
