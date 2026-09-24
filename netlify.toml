@@ -1,0 +1,16 @@
+# Netlify deploy: static SPA + /api proxy to the Render backend.
+# No SPA fallback needed — the router uses hash URLs (/#/...).
+
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+# Same-origin proxy: the browser only ever talks to this site, so CSP
+# connect-src 'self' keeps working and CORS never comes into play.
+# IMPORTANT: keep the Render service named `omniwatch-api` (or edit this URL).
+[[redirects]]
+  from = "/api/*"
+  to = "https://omniwatch-api.onrender.com/api/:splat"
+  status = 200
+  force = true

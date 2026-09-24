@@ -1,0 +1,43 @@
+# Secrets & local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# Runtime data (uploads, sqlite dev db, reports)
+backend/data/
+backend/*.db
+data/
+
+# Node
+node_modules/
+web/dist/
+web/.vite/
+
+# Freebuff workspace artifacts (logs, tunnels)
+.freebuff/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

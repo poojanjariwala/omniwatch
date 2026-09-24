@@ -1,0 +1,35 @@
+# Render blueprint: one free Docker web service running the FastAPI backend.
+# Deploy via "New +" -> "Blueprint" after the repo is on GitHub.
+# Keep the service name `omniwatch-api` — the frontend proxy targets that URL.
+#
+# Free-tier notes:
+# - No Celery/Redis: CV ingestion falls back to inline execution (documented in
+#   .env.example). CV_MODE=sim avoids downloading YOLO weights at boot.
+# - The database is external (Supabase Postgres), so AUTO_CREATE_TABLES=true is
+#   safe here: the app role is the project owner and may run DDL.
+# - Free instances sleep after ~15 min idle; first request cold-starts ~50 s.
+
+services:
+  - type: web
+    name: omniwatch-api
+    runtime: docker
+    dockerfilePath: ./infra/backend.Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false            # paste your Supabase Postgres pooler URL in the dashboard
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+      - key: SEED_ON_START
+        value: "true"
+      - key: AUTO_CREATE_TABLES
+        value: "true"
+      - key: CV_MODE
+        value: "sim"
+      - key: CORS_ORIGINS
+        value: https://omniwatch.netlify.app,http://localhost:5173
+      - key: DEBUG
+        value: "false"

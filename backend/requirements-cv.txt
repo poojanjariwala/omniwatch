@@ -1,0 +1,7 @@
+# Optional: real computer-vision stack for the CCTV ingestion path.
+# Installed only in the CV-capable Docker profile or a dedicated venv.
+# The application auto-falls back to the deterministic simulator when these
+# are unavailable and CV_MODE=auto (see app/services/cv/engine.py).
+ultralytics>=8.3.0
+supervision>=0.24.0
+opencv-python>=4.10.0

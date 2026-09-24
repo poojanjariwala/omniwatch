@@ -1,0 +1,120 @@
+# OmniWatch full stack (dev/demo). Copy .env.example to .env first.
+name: omniwatch
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: omniwatch
+      POSTGRES_USER: omniwatch_admin
+      POSTGRES_PASSWORD: ${OMNIWATCH_ADMIN_PASSWORD:-CHANGE-ME-admin-pass}
+      # Used by infra/db/init/01-users.sh to provision the least-privilege
+      # omniwatch_app role with the same generated password the api service uses.
+      OMNIWATCH_APP_PASSWORD: ${OMNIWATCH_APP_PASSWORD:-CHANGE-ME-app-pass}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omniwatch_admin -d omniwatch"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # No host port publish: the database is reachable only on the internal
+    # compose network (PRD: never expose the DB directly). Use
+    # `docker compose exec db psql ...` for host-side access.
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/backend.Dockerfile
+    environment:
+      OMNIWATCH_DB_ADMIN_URL: postgresql+psycopg2://omniwatch_admin:${OMNIWATCH_ADMIN_PASSWORD:-CHANGE-ME-admin-pass}@db:5432/omniwatch
+    command: ["python", "-m", "app.migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/backend.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://omniwatch_app:${OMNIWATCH_APP_PASSWORD:-CHANGE-ME-app-pass}@db:5432/omniwatch
+      SECRET_KEY: ${SECRET_KEY:-CHANGE-ME-LONG-RANDOM-STRING}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEBUG: ${DEBUG:-false}
+      # DDL belongs to the one-shot migrate service only; the api role is
+      # DML-only (least privilege), so table auto-creation must stay off.
+      AUTO_CREATE_TABLES: "false"
+      CORS_ORIGINS: http://localhost:8080
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CV_MODE: ${CV_MODE:-sim}
+      UPLOAD_DIR: /srv/omniwatch/data/uploads
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      # Idempotent DEMO-data bootstrap (DEMO-* rows + demo logins). Harmless if
+      # the database already has data; set OMNIWATCH_SEED_ON_START=false for a
+      # production-like empty deploy.
+      SEED_ON_START: ${OMNIWATCH_SEED_ON_START:-true}
+    volumes:
+      - uploads:/srv/omniwatch/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/backend.Dockerfile
+    command: ["python", "-m", "celery", "-A", "app.workers.celery_app:celery_app", "worker", "-l", "info", "-Q", "default"]
+    environment:
+      DATABASE_URL: postgresql+psycopg2://omniwatch_app:${OMNIWATCH_APP_PASSWORD:-CHANGE-ME-app-pass}@db:5432/omniwatch
+      SECRET_KEY: ${SECRET_KEY:-CHANGE-ME-LONG-RANDOM-STRING}
+      AUTO_CREATE_TABLES: "false"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CV_MODE: ${CV_MODE:-sim}
+      UPLOAD_DIR: /srv/omniwatch/data/uploads
+    volumes:
+      - uploads:/srv/omniwatch/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: .
+      dockerfile: infra/backend.Dockerfile
+    command: ["python", "-m", "celery", "-A", "app.workers.celery_app:celery_app", "beat", "-l", "info"]
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/web.Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  uploads:
