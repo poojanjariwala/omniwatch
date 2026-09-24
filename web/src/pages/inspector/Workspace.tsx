@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Chip, Err, Ok, Panel, Btn, Field, Empty, TrustRow, Kv } from "../../components/ui";
 import { apiErrorText, request, requestBlob } from "../../lib/api";
+import { apiBase } from "../../lib/config";
 import { fmtTime, shortHash, titleCase } from "../../lib/format";
 import { enqueueItem, loadQueue, syncQueue } from "../../lib/offline";
 
@@ -371,7 +372,7 @@ function CapturePanel({ inspectionId, projectLat, projectLng, onUploaded, offlin
         form.append("lat", String(projectLat));
         form.append("lng", String(projectLng));
         form.append("captured_at", new Date().toISOString());
-        const resp = await fetch(`/api/inspections/${inspectionId}/evidence`, {
+        const resp = await fetch(apiBase() + `/api/inspections/${inspectionId}/evidence`, {
           method: "POST",
           headers: { Authorization: `Bearer ${sessionStorage.getItem("ow_access_token") ?? ""}` },
           body: form,

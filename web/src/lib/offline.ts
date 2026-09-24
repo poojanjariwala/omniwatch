@@ -1,5 +1,6 @@
 /** Offline evidence queue — capture locally when offline, sync on reconnect.
  *  Each entry carries a unique client_ref so server retries are idempotent. */
+import { apiBase } from "./config";
 
 export interface QueuedEvidence {
   client_ref: string;
@@ -90,7 +91,7 @@ export async function syncQueue(inspectionId?: number): Promise<{ ok: number; fa
       if (entry.lat != null) form.append("lat", String(entry.lat));
       if (entry.lng != null) form.append("lng", String(entry.lng));
       form.append("client_ref", entry.client_ref);
-      const resp = await fetch(`/api/inspections/${entry.inspection_id}/evidence`, {
+      const resp = await fetch(apiBase() + `/api/inspections/${entry.inspection_id}/evidence`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${sessionStorage.getItem("ow_access_token") ?? ""}`,

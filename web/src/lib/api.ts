@@ -52,6 +52,8 @@ export function setActionToken(token: string): void {
   actionToken = token;
 }
 
+import { apiBase } from "./config";
+
 export async function login(email: string, password: string): Promise<UserInfo> {
   const body = await request("/api/auth/login", {
     method: "POST", json: { email, password },
@@ -98,7 +100,7 @@ async function raw(path: string, opts: ReqOpts, retry: boolean): Promise<Respons
   if (opts.sensitive && actionToken) headers.set("X-Action-Token", actionToken);
   if (opts.json !== undefined) headers.set("Content-Type", "application/json");
 
-  let url = path;
+  let url = apiBase() + path;
   if (opts.query) {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(opts.query)) {
@@ -169,7 +171,7 @@ async function doRefresh(): Promise<boolean> {
     return false;
   }
   try {
-    const resp = await fetch("/api/auth/refresh", {
+    const resp = await fetch(apiBase() + "/api/auth/refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
